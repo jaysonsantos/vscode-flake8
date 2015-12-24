@@ -3,7 +3,7 @@
 	"description": "VSCode plugin for flake8",
 	"author": "Jayson Reis",
 	"license": "MIT",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"publisher": "jaysonsantos",
 	"engines": {
 		"vscode": "0.10.x"
@@ -28,6 +28,10 @@
 			}
 		}
 	},
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jaysonsantos/vscode-flake8"
+    },
 	"scripts": {
 		"vscode:prepublish": "node ./node_modules/vscode/bin/compile",
 		"compile": "node ./node_modules/vscode/bin/compile -watch -p ./"
