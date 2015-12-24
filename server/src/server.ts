@@ -73,12 +73,12 @@ function findFlake8(): string {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
-3	validateTextDocument(change.document.uri);
+	validateTextDocument(change.document.uri);
 });
 
-// connection.onDidOpenTextDocument((params) => {
-//     validateTextDocument(params.uri);
-// });
+connection.onDidOpenTextDocument((params) => {
+    validateTextDocument(params.uri);
+});
 
 // The settings interface describe the server relevant settings part
 interface Settings {
@@ -119,8 +119,8 @@ function validateTextDocument(uri: string): void {
                     problems++;
                     diagnostics.push({
                        range: {
-                           start: {line: line - 1, character: column},
-                           end: {line: line - 1, character: column + 1},
+                           start: {line: line - 1, character: column - 1},
+                           end: {line: line - 1, character: column},
                        },
                        code: match[3],
                        message: `${match[3]}: ${match[4]}`
