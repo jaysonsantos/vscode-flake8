@@ -3,13 +3,13 @@
 	"description": "VSCode plugin for flake8",
 	"author": "Jayson Reis",
 	"license": "MIT",
-	"version": "0.0.1",
+	"version": "0.0.3",
 	"publisher": "jaysonsantos",
 	"engines": {
 		"vscode": "0.10.x"
 	},
 	"categories": [
-		"Other"
+		"Linters"
 	],
 	"activationEvents": [
 		"onLanguage:python"
