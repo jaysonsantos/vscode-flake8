@@ -12,7 +12,11 @@ import {
 	CompletionItem, CompletionItemKind
 } from 'vscode-languageserver';
 
-// Create a connection for the server. The connection uses 
+import * as fs from 'fs';
+import * as path from 'path';
+import * as child_process from 'child_process';
+
+// Create a connection for the server. The connection uses
 // stdin / stdout for message passing
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
 
@@ -24,10 +28,12 @@ let documents: TextDocuments = new TextDocuments();
 documents.listen(connection);
 
 // After the server has started the client sends an initilize request. The server receives
-// in the passed params the rootPath of the workspace plus the client capabilites. 
+// in the passed params the rootPath of the workspace plus the client capabilites.
 let workspaceRoot: string;
+let flake8Binary: string;
 connection.onInitialize((params): InitializeResult => {
 	workspaceRoot = params.rootPath;
+    flake8Binary = findFlake8();
 	return {
 		capabilities: {
 			// Tell the client that the server works in FULL text document sync mode
@@ -40,11 +46,39 @@ connection.onInitialize((params): InitializeResult => {
 	}
 });
 
+function findFlake8(): string {
+    for (let flake8Path of process.env.PATH.split(path.delimiter)) {
+        let foundPath = [flake8Path, 'flake8'].join(path.sep);
+        console.log('Checking', foundPath);
+        let stat: fs.Stats;
+        try {
+            stat = fs.statSync(foundPath);
+        } catch (error) {
+            continue;
+        }
+        console.log('File exists', foundPath, stat.isFile());
+        if (stat.isFile() && stat.mode & fs.X_OK) {
+            console.log('Spawning', foundPath);
+            let dataBuffer = child_process.execFileSync(foundPath, ['--version']);
+            let data = dataBuffer.toString();
+            let match = data.match(/^\d+.\d+.\d+/);
+            if (match) {
+                console.log(`Found flake8 on ${foundPath} version ${match[0]}`);
+                return foundPath;
+            }
+        }
+    }
+}
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
-	validateTextDocument(change.document);
+3	validateTextDocument(change.document.uri);
 });
+
+// connection.onDidOpenTextDocument((params) => {
+//     validateTextDocument(params.uri);
+// });
 
 // The settings interface describe the server relevant settings part
 interface Settings {
@@ -65,71 +99,48 @@ connection.onDidChangeConfiguration((change) => {
 	let settings = <Settings>change.settings;
 	maxNumberOfProblems = settings.languageServerExample.maxNumberOfProblems || 100;
 	// Revalidate any open text documents
-	documents.all().forEach(validateTextDocument);
+	documents.all().forEach((textDocument: ITextDocument) => validateTextDocument(textDocument.uri));
 });
 
-function validateTextDocument(textDocument: ITextDocument): void {
+function validateTextDocument(uri: string): void {
 	let diagnostics: Diagnostic[] = [];
-	let lines = textDocument.getText().split(/\r?\n/g);
+    let regex = /:(\d+):(\d+): (\w+) (.*)/gm;
 	let problems = 0;
-	for (var i = 0; i < lines.length && problems < maxNumberOfProblems; i++) {
-		let line = lines[i];
-		let index = line.indexOf('typescript');
-		if (index >= 0) {
-			problems++;
-			diagnostics.push({
-				severity: DiagnosticSeverity.Warning,
-				range: {
-					start: { line: i, character: index},
-					end: { line: i, character: index + 10 }
-				},
-				message: `${line.substr(index, 10)} should be spelled TypeScript`
-			});
-		}
-	}
-	// Send the computed diagnostics to VSCode.
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+    let pythonFile = uri.replace('file://', '')
+    console.log(`Testing file ${pythonFile} with ${flake8Binary}`);
+    child_process.execFile(flake8Binary, [pythonFile], {cwd: workspaceRoot},
+        (error, stdoutBuffer, stderr) => {
+            let stdout: string = stdoutBuffer.toString();
+            if (regex.test(stdout)) {
+                let match = regex.exec(stdout);
+                while (match && problems < maxNumberOfProblems) {
+                    let line = parseInt(match[1]);
+                    let column = parseInt(match[2]);
+                    problems++;
+                    diagnostics.push({
+                       range: {
+                           start: {line: line - 1, character: column},
+                           end: {line: line - 1, character: column + 1},
+                       },
+                       code: match[3],
+                       message: `${match[3]}: ${match[4]}`
+                    });
+                    match = regex.exec(stdout);
+                }
+
+                // Send the computed diagnostics to VSCode.
+                connection.sendDiagnostics({ uri, diagnostics });
+                return;
+            }
+    });
 }
 
+/*
 connection.onDidChangeWatchedFiles((change) => {
 	// Monitored files have change in VSCode
 	connection.console.log('We recevied an file change event');
 });
 
-
-// This handler provides the initial list of the completion items.
-connection.onCompletion((textDocumentPosition: TextDocumentIdentifier): CompletionItem[] => {
-	// The pass parameter contains the position of the text document in 
-	// which code complete got requested. For the example we ignore this
-	// info and always provide the same completion items.
-	return [
-		{
-			label: 'TypeScript',
-			kind: CompletionItemKind.Text,
-			data: 1
-		},
-		{
-			label: 'JavaScript',
-			kind: CompletionItemKind.Text,
-			data: 2
-		}
-	]
-});
-
-// This handler resolve additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	if (item.data === 1) {
-		item.detail = 'TypeScript details',
-		item.documentation = 'TypeScript documentation'
-	} else if (item.data === 2) {
-		item.detail = 'JavaScript details',
-		item.documentation = 'JavaScript documentation'
-	}
-	return item;
-});
-
-/*
 connection.onDidOpenTextDocument((params) => {
 	// A text document got opened in VSCode.
 	// params.uri uniquely identifies the document. For documents store on disk this is a file URI.

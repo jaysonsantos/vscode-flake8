@@ -1,2 +1,2 @@
-# vscode-languageserver-node-example
-Sample language server implemented in Node
+# VSCode Flake8
+**EXPERIMENTAL** Visual Studio Code extension for python files with flake8.

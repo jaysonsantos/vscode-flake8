@@ -1,10 +1,10 @@
 {
-	"name": "language-client-example",
-	"description": "VSCode part of a language server",
-	"author": "Microsoft Corporation",
+	"name": "vscode-flake8",
+	"description": "VSCode plugin for flake8",
+	"author": "Jayson Reis",
 	"license": "MIT",
 	"version": "0.0.1",
-	"publisher": "vscode",
+	"publisher": "jaysonsantos",
 	"engines": {
 		"vscode": "0.10.x"
 	},
@@ -12,7 +12,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onLanguage:plaintext"
+		"onLanguage:python"
 	],
 	"main": "./out/src/extension",
 	"contributes": {
@@ -27,7 +27,7 @@
 				}
 			}
 		}
-	},	
+	},
 	"scripts": {
 		"vscode:prepublish": "node ./node_modules/vscode/bin/compile",
 		"compile": "node ./node_modules/vscode/bin/compile -watch -p ./"

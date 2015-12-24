@@ -1,8 +1,8 @@
 {
-	"name": "langauge-server-example",
-	"description": "Example implementation of a language server in node.",
+	"name": "vscode-flake8-server",
+	"description": "Server for VSCode plugin Flake8.",
 	"version": "0.0.1",
-	"author": "Microsoft Corporation",
+	"author": "Jayson Reis",
 	"license": "MIT",
 	"engines": {
 		"node": "*"
