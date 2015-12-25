@@ -73,12 +73,12 @@ function findFlake8(): string {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
-	validateTextDocument(change.document.uri);
+	validateTextDocument(change.document.uri, change.document.getText());
 });
 
-connection.onDidOpenTextDocument((params) => {
-    validateTextDocument(params.uri);
-});
+// connection.onDidOpenTextDocument((params) => {
+//     validateTextDocument(params.uri);
+// });
 
 // The settings interface describe the server relevant settings part
 interface Settings {
@@ -102,16 +102,24 @@ connection.onDidChangeConfiguration((change) => {
 	documents.all().forEach((textDocument: ITextDocument) => validateTextDocument(textDocument.uri));
 });
 
-function validateTextDocument(uri: string): void {
+function validateTextDocument(uri: string, content?: string): void {
 	let diagnostics: Diagnostic[] = [];
     let regex = /:(\d+):(\d+): (\w+) (.*)/gm;
 	let problems = 0;
-    let pythonFile = uri.replace('file://', '')
+    let pythonFile: string;
+    if (content) {
+        pythonFile = `${uri.replace('file://', '')}.flake8.py`;
+        fs.writeFileSync(pythonFile, content);
+    } else {
+        pythonFile = uri.replace('file://', '');
+    }
+
     console.log(`Testing file ${pythonFile} with ${flake8Binary}`);
     child_process.execFile(flake8Binary, [pythonFile], {cwd: workspaceRoot},
         (error, stdoutBuffer, stderr) => {
             let stdout: string = stdoutBuffer.toString();
             if (regex.test(stdout)) {
+                regex.lastIndex = null;
                 let match = regex.exec(stdout);
                 while (match && problems < maxNumberOfProblems) {
                     let line = parseInt(match[1]);
@@ -127,11 +135,13 @@ function validateTextDocument(uri: string): void {
                     });
                     match = regex.exec(stdout);
                 }
-
-                // Send the computed diagnostics to VSCode.
-                connection.sendDiagnostics({ uri, diagnostics });
-                return;
             }
+            if (content) {
+                fs.unlink(pythonFile);
+            }
+            // Send the computed diagnostics to VSCode.
+            connection.sendDiagnostics({ uri, diagnostics });
+            return;
     });
 }
 
